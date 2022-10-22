@@ -23,9 +23,11 @@ func defineVar() {
 
 	fmt.Println(name0, age0)
 	fmt.Println(name, age, addr)
-	fmt.Printf("%T,%T", name1, age1, addr1)
-	fmt.Printf("%T,%T", name, age, addr)
+	// %T 打印类型
+	fmt.Printf("%T,%T,%T", name1, age1, addr1)
+	fmt.Printf("%T,%T,%T", name, age, addr)
 	fmt.Println()
+	// % d 数字类型，%p 打印地址
 	fmt.Printf("num:%d，内存地址：%p", age, &age) // 取地址符 &
 	age = 100
 	fmt.Println()
@@ -55,7 +57,7 @@ func test2() (int, int) {
 	return 2, 3
 }
 
-func test3() {
+func main() {
 	// 匿名函数 _
 	a, _ := test2()
 	test1()
