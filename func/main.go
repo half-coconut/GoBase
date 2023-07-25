@@ -16,6 +16,6 @@ func CallYourName() {
 	YourNameV2("小二", aliases) // 注意这里是个坑
 }
 
-func main() {
-	CallYourName()
+func demo4() {
+	//CallYourName()
 }
