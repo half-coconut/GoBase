@@ -10,4 +10,14 @@ func UseList() {
 	var l List[int]
 	l.Append(10)
 	l.Append(12.3) // 但是，这里其实是用不了
+	//l.Append("ssss")
+}
+
+// LinkedList 结构体也可以使用泛型
+type LinkedList[T any] struct {
+	head *node[T]
+	t    T
+}
+type node[T any] struct {
+	val T
 }
