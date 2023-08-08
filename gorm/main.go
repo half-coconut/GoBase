@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "gorm.io/driver/mysql"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )

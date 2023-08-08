@@ -1,6 +1,8 @@
 package web
 
 import (
+	"GoBase/webook/internal/domain"
+	"GoBase/webook/internal/service"
 	"fmt"
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-gonic/gin"
@@ -8,11 +10,12 @@ import (
 )
 
 type UserHandler struct {
+	svc         *service.UserService
 	emailExp    *regexp.Regexp
 	passwordExp *regexp.Regexp
 }
 
-func NewUserHandler() *UserHandler {
+func NewUserHandler(svc *service.UserService) *UserHandler {
 	const (
 		emailRegexPattern = "^\\w+([-+.]\\w+)*@\\w+([-.]\\w+)*\\.\\w+([-.]\\w+)*$"
 		// 和上面比起来，用 ` 看起来就比较清爽
@@ -21,6 +24,7 @@ func NewUserHandler() *UserHandler {
 	emailExp := regexp.MustCompile(emailRegexPattern, regexp.None)
 	passwordExp := regexp.MustCompile(passwordRegexPattern, regexp.None)
 	return &UserHandler{
+		svc:         svc,
 		emailExp:    emailExp,
 		passwordExp: passwordExp,
 	}
@@ -85,10 +89,19 @@ func (u *UserHandler) SignUp(c *gin.Context) {
 		c.String(http.StatusOK, "密码必须大于 8 位，包含数字、特殊字符")
 		return
 	}
+	err = u.svc.SignUp(c, domain.User{
+		Email:    req.Email,
+		Password: req.Password,
+	})
+	if err != nil {
+		c.String(http.StatusOK, "系统异常")
+		return
+	}
 
 	c.String(http.StatusOK, "注册成功！")
 	fmt.Printf("%v", req)
 	// 这边是数据库的操作
+
 }
 
 func (u *UserHandler) Login(c *gin.Context) {
