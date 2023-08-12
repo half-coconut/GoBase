@@ -5,7 +5,10 @@ import (
 	"GoBase/webook/internal/repository/dao"
 	"GoBase/webook/internal/service"
 	"GoBase/webook/internal/web"
+	"GoBase/webook/internal/web/middleware"
 	"github.com/gin-contrib/cors"
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -13,20 +16,29 @@ import (
 	"time"
 )
 
-func main() {
-	db, err := gorm.Open(mysql.Open("root:root@tcp(localhost:13316)/webook"), &gorm.Config{})
-	if err != nil {
-		// 在初始化过程中，panic
-		// panic 使得 goroutine 直接结束
-		// 一旦初始化过程出错，应用就不要启动了
-		panic(err)
-	}
-	ud := dao.NewUserDAO(db)
-	repo := repository.NewUserRepository(ud)
-	svc := service.NewUserService(repo)
-	u := web.NewUserHandler(svc)
+/**
+得到一个指针，用 & 取地址
+申明一个指针，用 * 指针
+*/
 
+func main() {
+	db := initDB()
+	u := initUser(db)
+	server := initWebServer()
+	//u.RegisterRoutesV1(server.Group("/users")) // v1 方法二
+	u.RegisterRoutes(server)
+	server.Run(":8080") // 监听并在 0.0.0.0:8080 上启动服务
+}
+
+func initWebServer() *gin.Engine {
 	server := gin.Default()
+	server.Use(func(c *gin.Context) {
+		println("这是第一个 middleware")
+	})
+	server.Use(func(c *gin.Context) {
+		println("这是第二个 middleware")
+	})
+
 	// 处理跨域问题
 	server.Use(cors.New(cors.Config{
 		//AllowOrigins: []string{"http://localhost:3000/"},
@@ -44,8 +56,34 @@ func main() {
 		},
 		MaxAge: 12 * time.Hour,
 	}))
-	//u.RegisterRoutesV1(server.Group("/users")) // v1 方法二
-	u.RegisterRoutes(server)
+	store := cookie.NewStore([]byte("secret"))
+	server.Use(sessions.Sessions("mysession", store))
 
-	server.Run(":8080") // 监听并在 0.0.0.0:8080 上启动服务
+	server.Use(middleware.NewLoginMiddlewareBuilder().
+		IgnorePaths("/users/login").
+		IgnorePaths("/users/signup").Builder())
+	return server
+}
+
+func initUser(db *gorm.DB) *web.UserHandler {
+	ud := dao.NewUserDAO(db)
+	repo := repository.NewUserRepository(ud)
+	svc := service.NewUserService(repo)
+	u := web.NewUserHandler(svc)
+	return u
+}
+
+func initDB() *gorm.DB {
+	db, err := gorm.Open(mysql.Open("root:root@tcp(localhost:13316)/webook"), &gorm.Config{})
+	if err != nil {
+		// 在初始化过程中，panic
+		// panic 使得 goroutine 直接结束
+		// 一旦初始化过程出错，应用就不要启动了
+		panic(err)
+	}
+	err = dao.InitTable(db)
+	if err != nil {
+		panic(err)
+	}
+	return db
 }

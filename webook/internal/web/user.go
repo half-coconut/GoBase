@@ -5,6 +5,7 @@ import (
 	"GoBase/webook/internal/service"
 	"fmt"
 	regexp "github.com/dlclark/regexp2"
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -93,6 +94,11 @@ func (u *UserHandler) SignUp(c *gin.Context) {
 		Email:    req.Email,
 		Password: req.Password,
 	})
+	if err == service.ErrUserDuplicateEmail {
+		c.String(http.StatusOK, "邮箱冲突")
+		return
+	}
+
 	if err != nil {
 		c.String(http.StatusOK, "系统异常")
 		return
@@ -105,6 +111,30 @@ func (u *UserHandler) SignUp(c *gin.Context) {
 }
 
 func (u *UserHandler) Login(c *gin.Context) {
+	type LoginReq struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	var req LoginReq
+	if err := c.Bind(&req); err != nil {
+		return
+	}
+	user, err := u.svc.Login(c, req.Email, req.Password)
+	if err == service.ErrInvalidUserOrPassword {
+		c.String(http.StatusOK, "用户名或密码不正确")
+		return
+	}
+	if err != nil {
+		c.String(http.StatusOK, "系统错误")
+		return
+	}
+	// 登录成功后，设置 session
+	sess := sessions.Default(c)
+	// 要放在 session 里面的东西
+	sess.Set("userId", user.Id)
+	sess.Save()
+	c.String(http.StatusOK, "登录成功！")
+	return
 }
 
 func (u *UserHandler) Edit(c *gin.Context) {
@@ -112,5 +142,5 @@ func (u *UserHandler) Edit(c *gin.Context) {
 }
 
 func (u *UserHandler) Profile(c *gin.Context) {
-
+	c.String(http.StatusOK, "这是你的 Profile")
 }
