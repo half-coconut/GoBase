@@ -162,7 +162,6 @@ func (u *UserHandler) Edit(c *gin.Context) {
 	//var nid = id.(int64)
 	_, err := u.svc.Edit(c, req.Id, req.NickName, req.Birthday, req.PersonalProfile)
 	if err != nil {
-		println(err)
 		c.String(http.StatusOK, "系统错误")
 		return
 	}
@@ -186,7 +185,6 @@ func (u *UserHandler) Profile(c *gin.Context) {
 	user, err := u.svc.Profile(c, nid)
 	if err != nil {
 		c.String(http.StatusOK, "系统错误")
-		println(err)
 		return
 	}
 	c.String(http.StatusOK, "你的昵称是：%v，\n你的生日是：%v，\n你的个人简介：%v", user.NickName, user.Birthday, user.PersonalProfile)
