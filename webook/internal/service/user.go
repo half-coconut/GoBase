@@ -50,3 +50,20 @@ func (svc *UserService) SignUp(c context.Context, u domain.User) error {
 	u.Password = string(hash)
 	return svc.repo.Create(c, u)
 }
+
+func (svc *UserService) Edit(c context.Context, Id int64, nick_name, birthday, personal_profile string) (domain.User, error) {
+	// 编辑 Profile
+	u, err := svc.repo.Update(c, Id, nick_name, birthday, personal_profile)
+	if err != nil {
+		return domain.User{}, err
+	}
+	return u, err
+}
+func (svc *UserService) Profile(c context.Context, id int64) (domain.User, error) {
+	// 查询 Profile
+	u, err := svc.repo.FindById(c, id)
+	if err != nil {
+		return domain.User{}, err
+	}
+	return u, err
+}

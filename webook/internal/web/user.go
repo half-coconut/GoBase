@@ -8,6 +8,7 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"strconv"
 )
 
 type UserHandler struct {
@@ -138,9 +139,56 @@ func (u *UserHandler) Login(c *gin.Context) {
 }
 
 func (u *UserHandler) Edit(c *gin.Context) {
-
+	type ProfileReq struct {
+		Id              int64  `json:"id"`
+		NickName        string `json:"nick_name"`
+		Birthday        string `json:"birthday"`
+		PersonalProfile string `json:"personal_profile"`
+	}
+	var req ProfileReq
+	if err := c.Bind(&req); err != nil {
+		return
+	}
+	if len(req.NickName) >= 50 {
+		c.String(http.StatusOK, "昵称名称不超过 50 个字符")
+		return
+	}
+	if len(req.PersonalProfile) >= 200 {
+		c.String(http.StatusOK, "个人简介不超过 200 个字符")
+		return
+	}
+	//sess := sessions.Default(c)
+	//id := sess.Get("userId")
+	//var nid = id.(int64)
+	_, err := u.svc.Edit(c, req.Id, req.NickName, req.Birthday, req.PersonalProfile)
+	if err != nil {
+		println(err)
+		c.String(http.StatusOK, "系统错误")
+		return
+	}
+	c.String(http.StatusOK, "编辑 Profile 成功！")
+	return
 }
 
 func (u *UserHandler) Profile(c *gin.Context) {
-	c.String(http.StatusOK, "这是你的 Profile")
+	type ProfileReq struct {
+		Id int64 `json:"id"`
+	}
+	var req ProfileReq
+	if err := c.Bind(&req); err != nil {
+		return
+	}
+	//sess := sessions.Default(c)
+	//id := sess.Get("userId")
+	//var nid = id.(int64)
+	id := c.Query("id")
+	nid, _ := strconv.ParseInt(id, 10, 64)
+	user, err := u.svc.Profile(c, nid)
+	if err != nil {
+		c.String(http.StatusOK, "系统错误")
+		println(err)
+		return
+	}
+	c.String(http.StatusOK, "你的昵称是：%v，\n你的生日是：%v，\n你的个人简介：%v", user.NickName, user.Birthday, user.PersonalProfile)
+	return
 }

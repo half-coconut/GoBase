@@ -40,9 +40,30 @@ func (r *UserRepository) Create(c context.Context, u domain.User) error {
 	// 在这里操作缓存
 }
 
-func (r *UserRepository) FindById() {
+func (r *UserRepository) Update(c context.Context, Id int64, nick_name, birthday, personal_profile string) (domain.User, error) {
+	u, err := r.dao.Update(c, Id, nick_name, birthday, personal_profile)
+	if err != nil {
+		return domain.User{}, err
+	}
+	return domain.User{
+		NickName:        u.NickName,
+		Birthday:        u.Birthday,
+		PersonalProfile: u.PersonalProfile,
+	}, nil
+}
+
+func (r *UserRepository) FindById(c context.Context, id int64) (domain.User, error) {
 	// 先从 cache 里面找
 	// 再从 dao 里面找
 	// 找到了回写 cache
 
+	u, err := r.dao.FindById(c, id)
+	if err != nil {
+		return domain.User{}, err
+	}
+	return domain.User{
+		NickName:        u.NickName,
+		Birthday:        u.Birthday,
+		PersonalProfile: u.PersonalProfile,
+	}, nil
 }
