@@ -25,7 +25,7 @@ func main() {
 	db := initDB()
 	u := initUser(db)
 	server := initWebServer()
-	//u.RegisterRoutesV1(server.Group("/users")) // v1 方法二
+	//u.RegisterRoutesV1(server.Group("/users")) // v1 Group 方法二
 	u.RegisterRoutes(server)
 	server.Run(":8080") // 监听并在 0.0.0.0:8080 上启动服务
 }
@@ -44,6 +44,8 @@ func initWebServer() *gin.Engine {
 		//AllowOrigins: []string{"http://localhost:3000/"},
 		//AllowMethods: []string{"PUT", "PATCH", "POST", "GET"}, // 不写就是 都支持
 		AllowHeaders: []string{"Content-Type", "Authorization"},
+		// 前端可以拿到这个值
+		ExposeHeaders: []string{"x-jwt-token"},
 		//ExposeHeaders:    []string{"Content-Length"},
 		// 是否允许带 cookie 之类
 		AllowCredentials: true,
@@ -68,9 +70,14 @@ func initWebServer() *gin.Engine {
 	//myStore := &sqlx_store.Store{}
 	server.Use(sessions.Sessions("mysession", store))
 
-	server.Use(middleware.NewLoginMiddlewareBuilder().
+	//server.Use(middleware.NewLoginMiddlewareBuilder().
+	//	IgnorePaths("/users/login").
+	//	IgnorePaths("/users/signup").Builder())
+
+	server.Use(middleware.NewLoginJWTMiddlewareBuilder().
 		IgnorePaths("/users/login").
 		IgnorePaths("/users/signup").Builder())
+
 	return server
 }
 

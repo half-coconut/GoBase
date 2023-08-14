@@ -7,8 +7,10 @@ import (
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	jwt "github.com/golang-jwt/jwt/v5"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 type UserHandler struct {
@@ -43,9 +45,11 @@ func NewUserHandler(svc *service.UserService) *UserHandler {
 func (u *UserHandler) RegisterRoutes(server *gin.Engine) {
 	ug := server.Group("/users")
 	ug.POST("/signup", u.SignUp)
-	ug.POST("/login", u.Login)
+	//ug.POST("/login", u.Login)
+	ug.POST("/login", u.LoginJWT)
 	ug.POST("/edit", u.Edit)
-	ug.GET("/profile", u.Profile)
+	//ug.GET("/profile", u.Profile)
+	ug.GET("/profile", u.ProfileJWT)
 }
 
 func (u *UserHandler) SignUp(c *gin.Context) {
@@ -111,6 +115,47 @@ func (u *UserHandler) SignUp(c *gin.Context) {
 
 }
 
+func (u *UserHandler) LoginJWT(c *gin.Context) {
+	type LoginReq struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	var req LoginReq
+	if err := c.Bind(&req); err != nil {
+		return
+	}
+	user, err := u.svc.Login(c, req.Email, req.Password)
+	if err == service.ErrInvalidUserOrPassword {
+		c.String(http.StatusOK, "用户名或密码不正确")
+		return
+	}
+	if err != nil {
+		c.String(http.StatusOK, "系统错误")
+		return
+	}
+	// 登录成功后，用 JWT 设置登录态
+	// 生成一个 JWT token
+
+	claims := UserClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute)),
+		},
+		Uid: user.Id,
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
+	tokenStr, err := token.SignedString([]byte("iyI1vQON0NmwDnaOMZAgdcJQZ7N6TYbD"))
+	if err != nil {
+		c.String(http.StatusInternalServerError, "系统错误")
+		return
+	}
+	fmt.Println(tokenStr)
+	fmt.Println(user)
+	c.Header("x-jwt-token", tokenStr)
+	c.String(http.StatusOK, "登录成功！")
+	return
+}
+
 func (u *UserHandler) Login(c *gin.Context) {
 	type LoginReq struct {
 		Email    string `json:"email"`
@@ -133,8 +178,25 @@ func (u *UserHandler) Login(c *gin.Context) {
 	sess := sessions.Default(c)
 	// 要放在 session 里面的东西
 	sess.Set("userId", user.Id)
+	sess.Options(sessions.Options{
+		//Secure: true,
+		//HttpOnly: true,
+		MaxAge: 60 * 30, // 过期时间: 30min
+	})
 	sess.Save()
 	c.String(http.StatusOK, "登录成功！")
+	return
+}
+
+func (u *UserHandler) Logout(c *gin.Context) {
+	sess := sessions.Default(c)
+	sess.Options(sessions.Options{
+		//Secure: true,
+		//HttpOnly: true,
+		MaxAge: -1,
+	})
+	sess.Save()
+	c.String(http.StatusOK, "退出登录成功！")
 	return
 }
 
@@ -189,4 +251,40 @@ func (u *UserHandler) Profile(c *gin.Context) {
 	}
 	c.String(http.StatusOK, "你的昵称是：%v，\n你的生日是：%v，\n你的个人简介：%v", user.NickName, user.Birthday, user.PersonalProfile)
 	return
+}
+func (u *UserHandler) ProfileJWT(c *gin.Context) {
+	type ProfileReq struct {
+		Id int64 `json:"id"`
+	}
+	var req ProfileReq
+	if err := c.Bind(&req); err != nil {
+		return
+	}
+	cl, ok := c.Get("claims")
+	if !ok {
+		// 监控这里，建议保留
+		c.String(http.StatusOK, "系统错误")
+		return
+	}
+	// cl.(*UserClaims) 类型断言,ok 代表是不是 *UserClaims
+	claims, ok := cl.(*UserClaims)
+	if !ok {
+		// 监控这里
+		c.String(http.StatusOK, "系统错误")
+		return
+	}
+
+	user, err := u.svc.Profile(c, claims.Uid)
+	if err != nil {
+		c.String(http.StatusOK, "系统错误")
+		return
+	}
+	c.String(http.StatusOK, "你的昵称是：%v，\n你的生日是：%v，\n你的个人简介：%v", user.NickName, user.Birthday, user.PersonalProfile)
+	return
+}
+
+type UserClaims struct {
+	jwt.RegisteredClaims
+	// 申明要放进 token 里面的数据
+	Uid int64
 }
