@@ -140,7 +140,8 @@ func (u *UserHandler) LoginJWT(c *gin.Context) {
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute)),
 		},
-		Uid: user.Id,
+		Uid:       user.Id,
+		UserAgent: c.Request.UserAgent(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
@@ -286,5 +287,6 @@ func (u *UserHandler) ProfileJWT(c *gin.Context) {
 type UserClaims struct {
 	jwt.RegisteredClaims
 	// 申明要放进 token 里面的数据
-	Uid int64
+	Uid       int64
+	UserAgent string
 }

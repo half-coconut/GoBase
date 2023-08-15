@@ -6,10 +6,13 @@ import (
 	"GoBase/webook/internal/service"
 	"GoBase/webook/internal/web"
 	"GoBase/webook/internal/web/middleware"
+	"GoBase/webook/pkg/ginx/middlewares/ratelimit"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/sessions"
-	"github.com/gin-contrib/sessions/redis"
+	"github.com/gin-contrib/sessions/memstore"
+	//"github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"strings"
@@ -38,6 +41,10 @@ func initWebServer() *gin.Engine {
 	server.Use(func(c *gin.Context) {
 		println("这是第二个 middleware")
 	})
+	redisClient := redis.NewClient(&redis.Options{
+		Addr: "localhost:6379",
+	})
+	server.Use(ratelimit.NewBuilder(redisClient, time.Second, 100).Build())
 
 	// 处理跨域问题
 	server.Use(cors.New(cors.Config{
@@ -60,14 +67,16 @@ func initWebServer() *gin.Engine {
 	}))
 	//store := cookie.NewStore([]byte("secret"))
 	// 基于 redis 实现的 store
-	store, err := redis.NewStore(16, "tcp", "localhost:6379", "",
-		// authentication key 身份认证, encryption key 数据加密
-		[]byte("iyI1vQON0NmwDnaOMZAgdcJQZ7N6TYbD"),
-		[]byte("OOPmqabOfgrBdeXk1545Dc1pS6JbCkUg"))
-	if err != nil {
-		panic(err)
-	}
+	//store, err := redis.NewStore(16, "tcp", "localhost:6379", "",
+	//	// authentication key 身份认证, encryption key 数据加密
+	//	[]byte("iyI1vQON0NmwDnaOMZAgdcJQZ7N6TYbD"),
+	//	[]byte("OOPmqabOfgrBdeXk1545Dc1pS6JbCkUg"))
+	//if err != nil {
+	//	panic(err)
+	//}
 	//myStore := &sqlx_store.Store{}
+	store := memstore.NewStore([]byte("iyI1vQON0NmwDnaOMZAgdcJQZ7N6TYbD"),
+		[]byte("OOPmqabOfgrBdeXk1545Dc1pS6JbCkUg"))
 	server.Use(sessions.Sessions("mysession", store))
 
 	//server.Use(middleware.NewLoginMiddlewareBuilder().
