@@ -1,0 +1,20 @@
+# pvc -> PersistentVolumeClaim
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: webook-live-mysql-claim
+  labels:
+    app: webook-live-mysql-claim
+spec:
+#  可以随便起名
+  storageClassName: coconut
+  accessModes:
+#    - 多个读，一个写
+#    - ReadOnlyMany
+#    - 多个读写
+#    - ReadWriteMany
+#    - 一个读写
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

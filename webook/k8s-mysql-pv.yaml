@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: PersistentVolume
+# 这里申明了 k8s 有哪些 volumes
+metadata:
+  name: my-local-pv
+  labels:
+    app: my-local-pv
+spec:
+  storageClassName: coconut
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+#    本 pv 的根目录
+    path: "/mnt/live"
+
+  
