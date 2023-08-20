@@ -10,6 +10,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/memstore"
+	"net/http"
 	//"github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
@@ -28,6 +29,10 @@ func main() {
 	db := initDB()
 	u := initUser(db)
 	server := initWebServer()
+
+	server.GET("/hello", func(c *gin.Context) {
+		c.String(http.StatusOK, "hello,gogogo!")
+	})
 	//u.RegisterRoutesV1(server.Group("/users")) // v1 Group 方法二
 	u.RegisterRoutes(server)
 	server.Run(":8080") // 监听并在 0.0.0.0:8080 上启动服务
@@ -42,7 +47,7 @@ func initWebServer() *gin.Engine {
 		println("这是第二个 middleware")
 	})
 	redisClient := redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
+		Addr: "webook-live-redis:6380",
 	})
 	server.Use(ratelimit.NewBuilder(redisClient, time.Second, 100).Build())
 
@@ -99,7 +104,7 @@ func initUser(db *gorm.DB) *web.UserHandler {
 }
 
 func initDB() *gorm.DB {
-	db, err := gorm.Open(mysql.Open("root:root@tcp(localhost:13316)/webook"), &gorm.Config{})
+	db, err := gorm.Open(mysql.Open("root:root@tcp(webook-live-mysql:3308)/webook"), &gorm.Config{})
 	if err != nil {
 		// 在初始化过程中，panic
 		// panic 使得 goroutine 直接结束

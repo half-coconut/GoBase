@@ -11,11 +11,11 @@ spec:
       http:
         paths:
 #          - 请求路径前缀是 / 时，流量转发到 webook 服务上
-#          - 端口是 81
+#          - 端口是 8081
           - backend:
               service:
                 name: webook
                 port:
-                  number: 81
+                  number: 8081
             pathType: Prefix
             path: /

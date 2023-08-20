@@ -7,7 +7,7 @@ spec:
     app: webook-live-mysql
   ports:
     - protocol: TCP
-      port: 13316
+      port: 3308
       targetPort: 3306
       nodePort: 30001
   type: NodePort
