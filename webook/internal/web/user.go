@@ -13,34 +13,31 @@ import (
 	"time"
 )
 
+const (
+	emailRegexPattern = "^\\w+([-+.]\\w+)*@\\w+([-.]\\w+)*\\.\\w+([-.]\\w+)*$"
+	// 和上面比起来，用 ` 看起来就比较清爽
+	passwordRegexPattern = `^(?=.*[A-Za-z])(?=.*\d)(?=.*[$@$!%*#?&])[A-Za-z\d$@$!%*#?&]{8,}$`
+)
+
+// 确保 UserHandler 上实现了 handler 接口
+var _ handler = &UserHandler{}
+
+// 写法二，更优雅
+var _ handler = (*UserHandler)(nil)
+
 type UserHandler struct {
-	svc         *service.UserService
+	svc         service.UserService
 	emailExp    *regexp.Regexp
 	passwordExp *regexp.Regexp
 }
 
-func NewUserHandler(svc *service.UserService) *UserHandler {
-	const (
-		emailRegexPattern = "^\\w+([-+.]\\w+)*@\\w+([-.]\\w+)*\\.\\w+([-.]\\w+)*$"
-		// 和上面比起来，用 ` 看起来就比较清爽
-		passwordRegexPattern = `^(?=.*[A-Za-z])(?=.*\d)(?=.*[$@$!%*#?&])[A-Za-z\d$@$!%*#?&]{8,}$`
-	)
-	emailExp := regexp.MustCompile(emailRegexPattern, regexp.None)
-	passwordExp := regexp.MustCompile(passwordRegexPattern, regexp.None)
+func NewUserHandler(svc service.UserService) *UserHandler {
 	return &UserHandler{
 		svc:         svc,
-		emailExp:    emailExp,
-		passwordExp: passwordExp,
+		emailExp:    regexp.MustCompile(emailRegexPattern, regexp.None),
+		passwordExp: regexp.MustCompile(passwordRegexPattern, regexp.None),
 	}
 }
-
-// RegisterRoutesV1 Group 的第二种处理方式
-//func (u *UserHandler) RegisterRoutesV1(ug *gin.RouterGroup) {
-//	ug.POST("/signup", u.SignUp)
-//	ug.POST("/login", u.Login)
-//	ug.POST("/edit", u.Edit)
-//	ug.GET("/profile", u.Profile)
-//}
 
 func (u *UserHandler) RegisterRoutes(server *gin.Engine) {
 	ug := server.Group("/users")
@@ -99,7 +96,7 @@ func (u *UserHandler) SignUp(c *gin.Context) {
 		Email:    req.Email,
 		Password: req.Password,
 	})
-	if err == service.ErrUserDuplicateEmail {
+	if err == service.ErrUserDuplicate {
 		c.String(http.StatusOK, "邮箱冲突")
 		return
 	}
@@ -201,35 +198,54 @@ func (u *UserHandler) Logout(c *gin.Context) {
 	return
 }
 
-func (u *UserHandler) Edit(c *gin.Context) {
-	type ProfileReq struct {
+func (c *UserHandler) Edit(ctx *gin.Context) {
+	type Req struct {
+		// 注意，其它字段，尤其是密码、邮箱和手机，
+		// 修改都要通过别的手段
+		// 邮箱和手机都要验证
+		// 密码更加不用多说了
 		Id              int64  `json:"id"`
 		NickName        string `json:"nick_name"`
 		Birthday        string `json:"birthday"`
 		PersonalProfile string `json:"personal_profile"`
 	}
-	var req ProfileReq
-	if err := c.Bind(&req); err != nil {
+
+	var req Req
+	if err := ctx.Bind(&req); err != nil {
 		return
 	}
-	if len(req.NickName) >= 50 {
-		c.String(http.StatusOK, "昵称名称不超过 50 个字符")
+	// 你可以尝试在这里校验。
+	// 比如说你可以要求 Nickname 必须不为空
+	// 校验规则取决于产品经理
+	if req.NickName == "" {
+		ctx.JSON(http.StatusOK, Result{Code: 4, Msg: "昵称不能为空"})
 		return
 	}
-	if len(req.PersonalProfile) >= 200 {
-		c.String(http.StatusOK, "个人简介不超过 200 个字符")
+
+	if len(req.PersonalProfile) > 1024 {
+		ctx.JSON(http.StatusOK, Result{Code: 4, Msg: "关于我过长"})
 		return
 	}
-	//sess := sessions.Default(c)
-	//id := sess.Get("userId")
-	//var nid = id.(int64)
-	_, err := u.svc.Edit(c, req.Id, req.NickName, req.Birthday, req.PersonalProfile)
+	birthday, err := time.Parse(time.DateOnly, req.Birthday)
 	if err != nil {
-		c.String(http.StatusOK, "系统错误")
+		// 也就是说，我们其实并没有直接校验具体的格式
+		// 而是如果你能转化过来，那就说明没问题
+		ctx.JSON(http.StatusOK, Result{Code: 4, Msg: "日期格式不对"})
 		return
 	}
-	c.String(http.StatusOK, "编辑 Profile 成功！")
-	return
+
+	uc := ctx.MustGet("user").(UserClaims)
+	err = c.svc.UpdateNonSensitiveInfo(ctx, domain.User{
+		Id:              uc.Uid,
+		NickName:        req.NickName,
+		PersonalProfile: req.PersonalProfile,
+		Birthday:        birthday,
+	})
+	if err != nil {
+		ctx.JSON(http.StatusOK, Result{Code: 5, Msg: "系统错误"})
+		return
+	}
+	ctx.JSON(http.StatusOK, Result{Msg: "OK"})
 }
 
 func (u *UserHandler) Profile(c *gin.Context) {
