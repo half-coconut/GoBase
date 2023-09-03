@@ -23,6 +23,9 @@ func InitMiddlewares(redisClient redis.Cmdable) []gin.HandlerFunc {
 		corsHdl(),
 		middleware.NewLoginJWTMiddlewareBuilder().
 			IgnorePaths("/users/login").
+			IgnorePaths("/hello").
+			IgnorePaths("/users/login_sms/code/send").
+			IgnorePaths("/users/login_sms").
 			IgnorePaths("/users/signup").Builder(),
 		ratelimit.NewBuilder(redisClient, time.Second, 100).Build(),
 	}
