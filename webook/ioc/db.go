@@ -1,13 +1,14 @@
 package ioc
 
 import (
+	"GoBase/webook/config"
 	"GoBase/webook/internal/repository/dao"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
 func InitDB() *gorm.DB {
-	db, err := gorm.Open(mysql.Open("root:root@tcp(webook-live-mysql:3308)/webook"), &gorm.Config{})
+	db, err := gorm.Open(mysql.Open(config.Config.DB.DNS))
 	if err != nil {
 		// 在初始化过程中，panic
 		// panic 使得 goroutine 直接结束

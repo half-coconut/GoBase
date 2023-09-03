@@ -17,32 +17,32 @@ type CodeService interface {
 	Verify(ctx context.Context, biz string, phone string, inputCode string) (bool, error)
 }
 
-// SMSCodeService 短信验证码的实现
-type SMSCodeService struct {
-	sms  sms.Service
-	repo repository.CodeRepository
+// codeService 短信验证码的实现
+type codeService struct {
+	repo   repository.CodeRepository
+	smsSvc sms.Service
 }
 
-func NewSMSCodeService(svc sms.Service, repo repository.CodeRepository) CodeService {
-	return &SMSCodeService{
-		sms:  svc,
-		repo: repo,
+func NewCodeService(repo repository.CodeRepository, smsSvc sms.Service) CodeService {
+	return &codeService{
+		repo:   repo,
+		smsSvc: smsSvc,
 	}
 }
 
 // Send 生成一个随机验证码，并发送
-func (c *SMSCodeService) Send(ctx context.Context, biz string, phone string) error {
+func (c *codeService) Send(ctx context.Context, biz string, phone string) error {
 	code := c.generate()
 	err := c.repo.Store(ctx, biz, phone, code)
 	if err != nil {
 		return err
 	}
-	err = c.sms.Send(ctx, codeTplId, []string{code}, phone)
+	err = c.smsSvc.Send(ctx, codeTplId, []string{code}, phone)
 	return err
 }
 
 // Verify 验证验证码
-func (c *SMSCodeService) Verify(ctx context.Context,
+func (c *codeService) Verify(ctx context.Context,
 	biz string,
 	phone string,
 	inputCode string) (bool, error) {
@@ -56,7 +56,7 @@ func (c *SMSCodeService) Verify(ctx context.Context,
 	return ok, err
 }
 
-func (c *SMSCodeService) generate() string {
+func (c *codeService) generate() string {
 	// 用随机数生成一个
 	num := rand.Intn(999999)
 	return fmt.Sprintf("%6d", num)
