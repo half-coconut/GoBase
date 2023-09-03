@@ -8,6 +8,10 @@ import (
 	"math/rand"
 )
 
+/**
+mockgen -source=webook/internal/service/code.go -package=svcmocks -destination=webook/internal/service/mocks/code.mock.go
+*/
+
 var ErrCodeSendTooMany = repository.ErrCodeSendTooMany
 
 const codeTplId = "1877556"
