@@ -17,16 +17,19 @@ const (
 	emailRegexPattern = "^\\w+([-+.]\\w+)*@\\w+([-.]\\w+)*\\.\\w+([-.]\\w+)*$"
 	// 和上面比起来，用 ` 看起来就比较清爽
 	passwordRegexPattern = `^(?=.*[A-Za-z])(?=.*\d)(?=.*[$@$!%*#?&])[A-Za-z\d$@$!%*#?&]{8,}$`
+	userIdKey            = "userId"
+	bizLogin             = "login"
 )
 
-// 确保 UserHandler 上实现了 handler 接口
+// 确保 UserHandler 上实现了 handler 接口，初始化了一个对象
 var _ handler = &UserHandler{}
 
-// 写法二，更优雅
+// 写法二，更优雅，这个没有初始化对象
 var _ handler = (*UserHandler)(nil)
 
 type UserHandler struct {
 	svc         service.UserService
+	codeSvc     service.CodeService
 	emailExp    *regexp.Regexp
 	passwordExp *regexp.Regexp
 }
@@ -47,6 +50,8 @@ func (u *UserHandler) RegisterRoutes(server *gin.Engine) {
 	ug.POST("/edit", u.Edit)
 	//ug.GET("/profile", u.Profile)
 	ug.GET("/profile", u.ProfileJWT)
+	ug.POST("/login_sms/code/send", u.SendSMSLoginCode)
+	ug.POST("/login_sms", u.LoginSMS)
 }
 
 func (u *UserHandler) SignUp(c *gin.Context) {
@@ -198,7 +203,7 @@ func (u *UserHandler) Logout(c *gin.Context) {
 	return
 }
 
-func (c *UserHandler) Edit(ctx *gin.Context) {
+func (u *UserHandler) Edit(ctx *gin.Context) {
 	type Req struct {
 		// 注意，其它字段，尤其是密码、邮箱和手机，
 		// 修改都要通过别的手段
@@ -235,7 +240,7 @@ func (c *UserHandler) Edit(ctx *gin.Context) {
 	}
 
 	uc := ctx.MustGet("user").(UserClaims)
-	err = c.svc.UpdateNonSensitiveInfo(ctx, domain.User{
+	err = u.svc.UpdateNonSensitiveInfo(ctx, domain.User{
 		Id:              uc.Uid,
 		NickName:        req.NickName,
 		PersonalProfile: req.PersonalProfile,
@@ -300,9 +305,91 @@ func (u *UserHandler) ProfileJWT(c *gin.Context) {
 	return
 }
 
+// SendSMSLoginCode 发送短信验证码
+func (u *UserHandler) SendSMSLoginCode(ctx *gin.Context) {
+	type Req struct {
+		Phone string `json:"phone"`
+	}
+	var req Req
+	if err := ctx.Bind(&req); err != nil {
+		return
+	}
+	// 你也可以用正则表达式校验是不是合法的手机号
+	if req.Phone == "" {
+		ctx.JSON(http.StatusOK, Result{Code: 4, Msg: "请输入手机号码"})
+		return
+	}
+	err := u.codeSvc.Send(ctx, bizLogin, req.Phone)
+	switch err {
+	case nil:
+		ctx.JSON(http.StatusOK, Result{Msg: "发送成功"})
+	case service.ErrCodeSendTooMany:
+		ctx.JSON(http.StatusOK, Result{Code: 4, Msg: "短信发送太频繁，请稍后再试"})
+	default:
+		ctx.JSON(http.StatusOK, Result{Code: 5, Msg: "系统错误"})
+		// 要打印日志
+		return
+	}
+}
+func (u *UserHandler) LoginSMS(ctx *gin.Context) {
+	type Req struct {
+		Phone string `json:"phone"`
+		Code  string `json:"code"`
+	}
+	var req Req
+	if err := ctx.Bind(&req); err != nil {
+		return
+	}
+	ok, err := u.codeSvc.Verify(ctx, bizLogin, req.Phone, req.Code)
+	if err != nil {
+		ctx.JSON(http.StatusOK, Result{Code: 5, Msg: "系统异常"})
+		return
+	}
+	if !ok {
+		ctx.JSON(http.StatusOK, Result{Code: 4, Msg: "验证码错误"})
+		return
+	}
+
+	// 验证码是对的
+	// 登录或者注册用户
+	ue, err := u.svc.FindOrCreate(ctx, req.Phone)
+	if err != nil {
+		ctx.JSON(http.StatusOK, Result{Code: 4, Msg: "系统错误"})
+		return
+	}
+	err = u.setJWTToken(ctx, ue.Id)
+	if err != nil {
+		ctx.JSON(http.StatusOK, Result{Msg: "系统错误"})
+		return
+	}
+	ctx.JSON(http.StatusOK, Result{Msg: "登录成功"})
+}
+func (u *UserHandler) setJWTToken(ctx *gin.Context, uid int64) error {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, UserClaims{
+		Uid:       uid,
+		UserAgent: ctx.GetHeader("User-Agent"),
+		RegisteredClaims: jwt.RegisteredClaims{
+			// 演示目的设置为一分钟过期
+			//ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute)),
+			// 在压测的时候，要将过期时间设置更长一些
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute * 30)),
+		},
+	})
+	tokenStr, err := token.SignedString(JWTKey)
+	if err != nil {
+		return err
+	}
+	ctx.Header("x-jwt-token", tokenStr)
+	return nil
+}
+
 type UserClaims struct {
 	jwt.RegisteredClaims
 	// 申明要放进 token 里面的数据
 	Uid       int64
 	UserAgent string
 }
+
+// JWTKey 因为 JWT Key 不太可能变，所以可以直接写成常量
+// 也可以考虑做成依赖注入
+var JWTKey = []byte("moyn8y9abnd7q4zkq2m73yw8tu9j5ixm")
