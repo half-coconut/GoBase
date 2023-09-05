@@ -75,12 +75,12 @@ func (u *UserHandler) SignUp(c *gin.Context) {
 		//c.String(http.StatusInternalServerError, "系统错误 "+http.StatusText(http.StatusInternalServerError))
 		// 优点：如果使用 2xx, bizCode 的方式，可以明确知道到达了服务器
 		// 缺点：不符合 http 规范，不好做监控
-		c.String(http.StatusOK, "系统错误 "+http.StatusText(http.StatusOK))
+		c.String(http.StatusOK, "系统错误")
 		return
 	}
 	if !ok {
 		//c.String(http.StatusBadRequest, "邮箱格式不正确 "+http.StatusText(http.StatusBadRequest))
-		c.String(http.StatusOK, "邮箱格式不正确 "+http.StatusText(http.StatusOK))
+		c.String(http.StatusOK, "邮箱格式不正确")
 		return
 	}
 	if req.ConfirmPassword != req.Password {
@@ -343,11 +343,15 @@ func (u *UserHandler) LoginSMS(ctx *gin.Context) {
 	}
 	ok, err := u.codeSvc.Verify(ctx, bizLogin, req.Phone, req.Code)
 	if err != nil {
-		ctx.JSON(http.StatusOK, Result{Code: 5, Msg: "系统异常"})
+		ctx.JSON(http.StatusOK, Result{
+			Code: 5, Msg: "系统异常",
+		})
 		return
 	}
 	if !ok {
-		ctx.JSON(http.StatusOK, Result{Code: 4, Msg: "验证码错误"})
+		ctx.JSON(http.StatusOK, Result{
+			Code: 4, Msg: "验证码错误",
+		})
 		return
 	}
 
@@ -355,12 +359,16 @@ func (u *UserHandler) LoginSMS(ctx *gin.Context) {
 	// 登录或者注册用户
 	ue, err := u.svc.FindOrCreate(ctx, req.Phone)
 	if err != nil {
-		ctx.JSON(http.StatusOK, Result{Code: 4, Msg: "系统错误"})
+		ctx.JSON(http.StatusOK, Result{
+			Code: 4, Msg: "系统错误",
+		})
 		return
 	}
 	err = u.setJWTToken(ctx, ue.Id)
 	if err != nil {
-		ctx.JSON(http.StatusOK, Result{Msg: "系统错误"})
+		ctx.JSON(http.StatusOK, Result{
+			Msg: "系统错误",
+		})
 		return
 	}
 	ctx.JSON(http.StatusOK, Result{Msg: "登录成功"})

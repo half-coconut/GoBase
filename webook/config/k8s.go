@@ -1,5 +1,6 @@
 //go:build k8s
 
+// go build -tags=k8s -o webook .
 package config
 
 var Config = config{

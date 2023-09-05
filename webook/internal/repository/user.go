@@ -72,8 +72,9 @@ func (r *CachedUserRepository) FindById(c context.Context, id int64) (domain.Use
 	// 再从 dao 里面找
 	// 找到了回写 cache
 	u, err := r.cache.Get(c, id)
-	if err != nil {
-		return u, err
+	if err == nil {
+		// 有数据，返回 u
+		return u, nil
 	}
 
 	ue, err := r.dao.FindById(c, id)
@@ -81,11 +82,16 @@ func (r *CachedUserRepository) FindById(c context.Context, id int64) (domain.Use
 		return domain.User{}, err
 	}
 	u = r.entityToDomain(ue)
+	// 同步调用 set，不使用 go routine 方式,
+	//_ = r.cache.Set(c, u)
+
+	// 异步调用 set
 	go func() {
-		err = r.cache.Set(c, u)
-		if err != nil {
-			// 怎么处理
-		}
+		_ = r.cache.Set(c, u)
+		//err = r.cache.Set(c, u)
+		//if err != nil {
+		//	// 怎么处理
+		//}
 	}()
 	return u, nil
 }
@@ -99,6 +105,7 @@ func (r *CachedUserRepository) entityToDomain(u dao.User) domain.User {
 		Id:              u.Id,
 		Email:           u.Email.String,
 		Password:        u.Password,
+		Phone:           u.Phone.String,
 		NickName:        u.NickName.String,
 		Birthday:        birthday,                 // 前端输入 1990-01-01 需要转化吗？
 		PersonalProfile: u.PersonalProfile.String, // 200个字符
