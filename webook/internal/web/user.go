@@ -354,7 +354,6 @@ func (u *UserHandler) LoginSMS(ctx *gin.Context) {
 		})
 		return
 	}
-
 	// 验证码是对的
 	// 登录或者注册用户
 	ue, err := u.svc.FindOrCreate(ctx, req.Phone)
@@ -371,7 +370,9 @@ func (u *UserHandler) LoginSMS(ctx *gin.Context) {
 		})
 		return
 	}
-	ctx.JSON(http.StatusOK, Result{Msg: "登录成功"})
+	ctx.JSON(http.StatusOK, Result{
+		Msg: "登录成功",
+	})
 }
 func (u *UserHandler) setJWTToken(ctx *gin.Context, uid int64) error {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, UserClaims{

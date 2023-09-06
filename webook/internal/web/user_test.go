@@ -6,6 +6,7 @@ import (
 	svcmocks "GoBase/webook/internal/service/mocks"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -198,35 +199,140 @@ func TestMock(t *testing.T) {
 
 func TestUserHandler_LoginSMS(t *testing.T) {
 	testCases := []struct {
-		name     string
-		mock     func(ctrl *gomock.Controller) service.CodeService
-		reqBody  string
-		wantBody string
-		wantCode int64
+		name string
+		mock func(ctrl *gomock.Controller) (service.UserService, service.CodeService)
+
+		reqBody      string
+		wantHttpCode int
+		wantMsg      string
+		wantCode     int
 	}{
-		{},
+		{
+			name: "登录成功，用户已存在",
+			mock: func(ctrl *gomock.Controller) (service.UserService, service.CodeService) {
+				codesvc := svcmocks.NewMockCodeService(ctrl)
+				usersvc := svcmocks.NewMockUserService(ctrl)
+				codesvc.EXPECT().Verify(
+					gomock.Any(), "login", "138", "123456").
+					Return(true, nil)
+				usersvc.EXPECT().FindOrCreate(gomock.Any(), "138").
+					Return(domain.User{
+						Phone: "138",
+					}, nil)
+				return usersvc, codesvc
+			},
+			reqBody: `{
+"phone":"138",
+"code":"123456"
+}`,
+			wantMsg:      "登录成功",
+			wantCode:     0,
+			wantHttpCode: http.StatusOK,
+		},
+		{
+			name: "入参格式不对",
+			mock: func(ctrl *gomock.Controller) (service.UserService, service.CodeService) {
+				codesvc := svcmocks.NewMockCodeService(ctrl)
+				usersvc := svcmocks.NewMockUserService(ctrl)
+				return usersvc, codesvc
+			},
+			reqBody: `{
+"phone":"138",
+"code":"123
+}`,
+			wantMsg:      "",
+			wantCode:     0,
+			wantHttpCode: http.StatusBadRequest,
+		},
+		{
+			name: "code 校验时，系统异常",
+			mock: func(ctrl *gomock.Controller) (service.UserService, service.CodeService) {
+				codesvc := svcmocks.NewMockCodeService(ctrl)
+				usersvc := svcmocks.NewMockUserService(ctrl)
+				codesvc.EXPECT().Verify(
+					gomock.Any(), "login", "138", "123456").
+					Return(true, errors.New("code verify error"))
+				return usersvc, codesvc
+			},
+			reqBody: `{
+"phone":"138",
+"code":"123456"
+}`,
+			wantMsg:      "系统异常",
+			wantCode:     5,
+			wantHttpCode: http.StatusOK,
+		},
+		{
+			name: "code 校验时，验证码错误",
+			mock: func(ctrl *gomock.Controller) (service.UserService, service.CodeService) {
+				codesvc := svcmocks.NewMockCodeService(ctrl)
+				usersvc := svcmocks.NewMockUserService(ctrl)
+				codesvc.EXPECT().Verify(
+					gomock.Any(), "login", "138", "123456").
+					Return(false, nil)
+				return usersvc, codesvc
+			},
+			reqBody: `{
+"phone":"138",
+"code":"123456"
+}`,
+			wantMsg:      "验证码错误",
+			wantCode:     4,
+			wantHttpCode: http.StatusOK,
+		},
+		{
+			name: "数据库异常",
+			mock: func(ctrl *gomock.Controller) (service.UserService, service.CodeService) {
+				codesvc := svcmocks.NewMockCodeService(ctrl)
+				usersvc := svcmocks.NewMockUserService(ctrl)
+				codesvc.EXPECT().Verify(
+					gomock.Any(), "login", "138", "123456").
+					Return(true, nil)
+				usersvc.EXPECT().FindOrCreate(gomock.Any(), "138").
+					Return(domain.User{}, errors.New("mock db error"))
+				return usersvc, codesvc
+			},
+			reqBody: `{
+"phone":"138",
+"code":"123456"
+}`,
+			wantMsg:      "系统错误",
+			wantCode:     4,
+			wantHttpCode: http.StatusOK,
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 			server := gin.Default()
-			h := NewUserHandler(nil, tc.mock(ctrl))
+			h := NewUserHandler(tc.mock(ctrl))
 			h.RegisterRoutes(server)
 
-			req, err := http.NewRequest(http.MethodPost, "/login_sms", bytes.NewBuffer([]byte(tc.reqBody)))
+			req, err := http.NewRequest(http.MethodPost, "/users/login_sms", bytes.NewBuffer([]byte(tc.reqBody)))
 			require.NoError(t, err)
 			req.Header.Set("Content-Type", "application/json")
 			resp := httptest.NewRecorder()
 			//server.Use(func(c *gin.Context) {
-			//	c.Set("user",UserClaims{
+			//	c.Set("user", UserClaims{
 			//		Uid: 1,
 			//	})
 			//})
 			println(req, resp)
 			server.ServeHTTP(resp, req)
-			assert.Equal(t, tc.wantCode, resp.Code)
-			assert.Equal(t, tc.wantBody, resp.Body.String())
+			data, _ := stringToJson(resp.Body.String())
+			println(resp.Body.String())
+			assert.Equal(t, tc.wantHttpCode, resp.Code)
+			assert.Equal(t, tc.wantMsg, data.Msg)
+			assert.Equal(t, tc.wantCode, data.Code)
 		})
 	}
+}
+
+func stringToJson(res string) (data Result, err error) {
+	err = json.Unmarshal([]byte(res), &data)
+	if err != nil {
+		return Result{}, err
+	}
+	return data, nil
 }

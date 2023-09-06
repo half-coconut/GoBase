@@ -63,5 +63,5 @@ func (c *codeService) Verify(ctx context.Context,
 func (c *codeService) generate() string {
 	// 用随机数生成一个
 	num := rand.Intn(999999)
-	return fmt.Sprintf("%6d", num)
+	return fmt.Sprintf("%06d", num)
 }
