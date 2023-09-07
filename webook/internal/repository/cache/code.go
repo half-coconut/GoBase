@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"github.com/coocood/freecache"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -29,6 +30,45 @@ type CodeCache interface {
 // RedisCodeCache 基于 Redis 的实现
 type RedisCodeCache struct {
 	redis redis.Cmdable
+}
+
+type CodeCache interface {
+	Set(ctx context.Context, biz string, phone string, code string) error
+	Verify(ctx context.Context, biz string,
+		phone string, inputCode string) (bool, error)
+}
+type codeCache struct {
+	fcache freecache.Cache
+}
+
+func NewCodeCache(cache freecache.Cache) CodeCache {
+	return &codeCache{
+		fcache: cache,
+	}
+}
+
+func (c *codeCache) Set(ctx context.Context, biz string, phone string, code string) error {
+	err := c.fcache.Set([]byte(c.key(biz, phone)), []byte(code), 600) // 设置10分钟有效期
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func (c *codeCache) Verify(ctx context.Context, biz string,
+	phone string, inputCode string) (bool, error) {
+	code, err := c.fcache.Get([]byte(c.key(biz, phone)))
+	if err != nil {
+		return false, err
+	}
+	if string(code) == inputCode {
+		_ = c.fcache.Set([]byte(c.key(biz, phone)+":cnt"), []byte("-1"), 3600)
+	} else {
+		c.fcache.Del([]byte(c.key(biz, phone)))
+	}
+	return false, nil
+}
+func (c *codeCache) key(biz string, phone string) string {
+	return fmt.Sprintf("phone_code:%s:%s", biz, phone)
 }
 
 func NewCodeCache(cmd redis.Cmdable) CodeCache {
