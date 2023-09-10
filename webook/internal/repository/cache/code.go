@@ -19,7 +19,7 @@ var (
 	ErrCodeVerifyTooManyTimes = errors.New("验证次数太多")
 )
 
-type CodeCache interface {
+type CodeRedisCache interface {
 	Set(ctx context.Context, biz string,
 		phone string, code string) error
 
@@ -71,7 +71,7 @@ func (c *codeCache) key(biz string, phone string) string {
 	return fmt.Sprintf("phone_code:%s:%s", biz, phone)
 }
 
-func NewCodeCache(cmd redis.Cmdable) CodeCache {
+func NewCodeRedisCache(cmd redis.Cmdable) CodeRedisCache {
 	return &RedisCodeCache{
 		redis: cmd,
 	}

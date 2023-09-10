@@ -26,7 +26,7 @@ func InitWebServer() *gin.Engine {
 	userCache := cache.NewUserCache(cmdable)
 	userRepository := repository.NewUserRepository(userDAO, userCache)
 	userService := service.NewUserService(userRepository)
-	codeCache := cache.NewCodeCache(cmdable)
+	codeCache := cache.NewCodeRedisCache(cmdable)
 	codeRepository := repository.NewCodeRepository(codeCache)
 	smsService := ioc.InitSMSService()
 	codeService := service.NewCodeService(codeRepository, smsService)

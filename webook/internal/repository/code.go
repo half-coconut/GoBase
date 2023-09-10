@@ -19,10 +19,10 @@ type CodeRepository interface {
 }
 
 type CachedCodeRepository struct {
-	cache cache.CodeCache
+	cache cache.CodeRedisCache
 }
 
-func NewCodeRepository(c cache.CodeCache) CodeRepository {
+func NewCodeRepository(c cache.CodeRedisCache) CodeRepository {
 	return &CachedCodeRepository{
 		cache: c,
 	}

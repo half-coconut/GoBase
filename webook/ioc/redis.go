@@ -2,6 +2,7 @@ package ioc
 
 import (
 	"GoBase/webook/config"
+	"github.com/coocood/freecache"
 	"github.com/redis/go-redis/v9"
 )
 
