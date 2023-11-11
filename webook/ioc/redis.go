@@ -17,3 +17,7 @@ func InitFreeCache() *freecache.Cache {
 	// 缓存大小为1MB
 	return freecache.NewCache(1024 * 1024)
 }
+
+//func NewRateLimiter()redis.Limiter  {
+//
+//}

@@ -18,6 +18,7 @@ type UserDAO interface {
 	FindById(c context.Context, id int64) (User, error)
 	FindByEmail(c context.Context, email string) (User, error)
 	FindByPhone(c context.Context, phone string) (User, error)
+	FindByWechat(c context.Context, openID string) (User, error)
 	Insert(c context.Context, u User) error
 	Update(c context.Context, Id int64, nick_name, birthday, personal_profile string) (User, error)
 	UpdateNonZeroFields(c context.Context, u User) error
@@ -40,6 +41,13 @@ func NewUserDAO(db *gorm.DB) UserDAO {
 func (dao *GORMUserDAO) FindById(c context.Context, id int64) (User, error) {
 	var u User
 	err := dao.db.WithContext(c).First(&u, "id=?", id).Error
+	return u, err
+}
+func (dao *GORMUserDAO) FindByWechat(c context.Context, openID string) (User, error) {
+	var u User
+	err := dao.db.WithContext(c).Where("wechat_open_id=?", openID).First(&u).Error
+	// 写法二
+	//err := dao.db.WithContext(c).First(&u, "email=?", email).Error
 	return u, err
 }
 
@@ -108,6 +116,17 @@ type User struct {
 	// 指定是 varchar 这个类型，并且长度是 1024
 	// 因此你可以看到在 web 里面有这个校验
 	PersonalProfile sql.NullString `gorm:"type=varchar(1024)"`
+
+	// 索引的最左匹配原则
+	// 假如索引在 <A，B，C> 建好了
+	// where 里面带了 ABC, 可以用，例如：A、AB、ABC 都能用
+	// where 里面没有 A, 就不能用
+
+	// 如果要创建联合索引，<unionid, openid>，用 openid 查询的时候不会走索引
+	// <openid, unionid> 用 unionid 查询时，不会走索引
+	// 微信绑定的字段
+	WechatUnionID sql.NullString
+	WechatOpenID  sql.NullString `gorm:"unique"` // 授权用户唯一标识
 
 	// 创建时间 毫秒数
 	Ctime int64

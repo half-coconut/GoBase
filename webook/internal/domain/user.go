@@ -9,8 +9,9 @@ type User struct {
 	Email           string
 	Phone           string
 	Password        string
-	NickName        string    // 50个字符
-	PersonalProfile string    // 200个字符
+	NickName        string // 50个字符
+	PersonalProfile string // 200个字符
+	WechatInfo      WechatInfo
 	Birthday        time.Time // 前端输入 1990-01-01 需要转化吗？
 	Ctime           time.Time
 }

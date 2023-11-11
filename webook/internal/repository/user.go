@@ -21,6 +21,7 @@ type UserRepository interface {
 	FindByEmail(c context.Context, email string) (domain.User, error)
 	FindByPhone(c context.Context, phone string) (domain.User, error)
 	FindById(c context.Context, id int64) (domain.User, error)
+	FindByWechat(c context.Context, openID string) (domain.User, error)
 }
 
 type CachedUserRepository struct {
@@ -96,6 +97,11 @@ func (r *CachedUserRepository) FindById(c context.Context, id int64) (domain.Use
 	return u, nil
 }
 
+func (r *CachedUserRepository) FindByWechat(c context.Context, openID string) (domain.User, error) {
+	u, err := r.dao.FindByWechat(c, openID)
+	return r.entityToDomain(u), err
+}
+
 func (r *CachedUserRepository) entityToDomain(u dao.User) domain.User {
 	var birthday time.Time
 	if u.Birthday.Valid {
@@ -109,7 +115,11 @@ func (r *CachedUserRepository) entityToDomain(u dao.User) domain.User {
 		NickName:        u.NickName.String,
 		Birthday:        birthday,                 // 前端输入 1990-01-01 需要转化吗？
 		PersonalProfile: u.PersonalProfile.String, // 200个字符
-		Ctime:           time.UnixMilli(u.Ctime),
+		WechatInfo: domain.WechatInfo{
+			UnionID: u.WechatUnionID.String,
+			OpenID:  u.WechatOpenID.String,
+		},
+		Ctime: time.UnixMilli(u.Ctime),
 	}
 }
 
@@ -137,5 +147,13 @@ func (r *CachedUserRepository) domainToEntity(u domain.User) dao.User {
 			Valid:  u.PersonalProfile != "",
 		},
 		Password: u.Password,
+		WechatOpenID: sql.NullString{
+			String: u.WechatInfo.OpenID,
+			Valid:  u.WechatInfo.OpenID != "",
+		},
+		WechatUnionID: sql.NullString{
+			String: u.WechatInfo.UnionID,
+			Valid:  u.WechatInfo.UnionID != "",
+		},
 	}
 }
