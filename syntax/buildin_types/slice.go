@@ -12,7 +12,7 @@ func Slice() {
 	s2 := make([]int, 3, 4)
 	fmt.Printf("s2: %v, len=%d, cap=%d \n", s2, len(s2), cap(s2))
 
-	s3 := make([]int, 4)
+	s3 := make([]int, 2)
 	fmt.Printf("s3: %v, len=%d, cap=%d \n", s3, len(s3), cap(s3))
 
 	s4 := make([]int, 0, 4)
@@ -73,4 +73,50 @@ func ShareSlice() {
 	// s1: [1 2 99 4], len=4, cap=4
 	// s2: [99 1999 199], len=3, cap=4
 	// s1: [1 2 99 4], len=4, cap=4
+}
+
+func searchRange(nums []int, target int) []int {
+	if len(nums) == 0 {
+		return []int{-1, -1}
+	}
+	firstValue := first(nums, target)
+	if firstValue == -1 {
+		return []int{-1, -1}
+	}
+	lastValue := last(nums, target)
+	return []int{firstValue, lastValue}
+
+}
+
+func last(nums []int, target int) int {
+	left, right := 0, len(nums)-1
+	for left < right {
+		mid := left + (right-left+1)/2
+		if nums[mid] == target {
+			left = mid
+		} else if nums[mid] > target {
+			right = mid - 1
+		} else if nums[mid] < target {
+			left = mid + 1
+		}
+	}
+	return left
+}
+
+func first(nums []int, target int) int {
+	left, right := 0, len(nums)-1
+	for left < right {
+		mid := left + (right-left)/2
+		if nums[mid] == target {
+			right = mid
+		} else if nums[mid] > target {
+			right = mid - 1
+		} else if nums[mid] < target {
+			left = mid + 1
+		}
+	}
+	if nums[left] == target {
+		return left
+	}
+	return -1
 }

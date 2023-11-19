@@ -1,14 +1,19 @@
 package ioc
 
 import (
-	"GoBase/webook/config"
+	"fmt"
 	"github.com/coocood/freecache"
 	"github.com/redis/go-redis/v9"
+	"github.com/spf13/viper"
 )
 
 func InitRedis() redis.Cmdable {
+	addr := viper.GetString("redis.addr")
+	//viper.GetDuration()
+	//viper.GetFloat64() 注意精度
+	fmt.Println(addr)
 	redisClient := redis.NewClient(&redis.Options{
-		Addr: config.Config.Redis.Addr,
+		Addr: addr,
 	})
 	return redisClient
 }

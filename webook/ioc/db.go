@@ -1,14 +1,24 @@
 package ioc
 
 import (
-	"GoBase/webook/config"
 	"GoBase/webook/internal/repository/dao"
+	"github.com/spf13/viper"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
 func InitDB() *gorm.DB {
-	db, err := gorm.Open(mysql.Open(config.Config.DB.DNS))
+	//dsn := viper.GetString("db.mysql.dsn")
+	//fmt.Println(dsn)
+	type Config struct {
+		DSN string `yaml:"dsn"`
+	}
+	var cfg Config
+	err := viper.UnmarshalKey("db.mysql", &cfg)
+	if err != nil {
+		panic(err)
+	}
+	db, err := gorm.Open(mysql.Open(cfg.DSN))
 	if err != nil {
 		// 在初始化过程中，panic
 		// panic 使得 goroutine 直接结束
