@@ -8,6 +8,7 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	jwt "github.com/golang-jwt/jwt/v5"
+	"go.uber.org/zap"
 	"net/http"
 	"strconv"
 	"time"
@@ -347,6 +348,11 @@ func (u *UserHandler) LoginSMS(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, Result{
 			Code: 5, Msg: "系统异常",
 		})
+		zap.L().Error("校验验证码错误", zap.Error(err))
+		// 手机号是敏感信息，不建议在 Error 级别打印
+		// 做法一：打印加密后的串，但是影响性能，不常见
+		// 脱敏，152****1234，但是无法用于定位问题
+		zap.L().Debug("手机号", zap.String("手机号码", req.Phone))
 		return
 	}
 	if !ok {

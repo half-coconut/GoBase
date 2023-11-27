@@ -13,8 +13,11 @@ func InitDB() *gorm.DB {
 	type Config struct {
 		DSN string `yaml:"dsn"`
 	}
-	var cfg Config
-	err := viper.UnmarshalKey("db.mysql", &cfg)
+	var cfg = Config{
+		DSN: "root:root@tcp(localhost:13316)/webook_default",
+	}
+	// remote 不支持 key 的切割
+	err := viper.UnmarshalKey("db", &cfg)
 	if err != nil {
 		panic(err)
 	}

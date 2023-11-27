@@ -3,8 +3,8 @@ services:
   mysql5:
     image: mysql:latest
     restart: always
-#    command:
-#      - default_authentication_plugin=mysql_native_password
+    #    command:
+    #      - default_authentication_plugin=mysql_native_password
     environment:
       MYSQL_ROOT_PASSWORD: root
     volumes:
@@ -19,4 +19,12 @@ services:
       - ALLOW_EMPTY_PASSWORD=yes
     ports:
       - '6379:6379'
+  etcd:
+    image: 'bitnami/etcd:latest'
+    environment:
+      - ALLOW_NONE_AUTHENTICATION=yes
+    ports:
+      # 用 12379 端口来连接 etcd
+      - 12379:2379
+
 # docker compose up -d 后台启动
