@@ -1,6 +1,7 @@
 package integration
 
 import (
+	startup "GoBase/webook/internal/integration/startup"
 	"GoBase/webook/internal/web"
 	"GoBase/webook/ioc"
 	"bytes"
@@ -16,7 +17,7 @@ import (
 )
 
 func TestUserHandler_e2e_SendSMSLoginCode(t *testing.T) {
-	server := InitWebServer()
+	server := startup.InitWebServer()
 	rdb := ioc.InitRedis()
 	testCases := []struct {
 		name string

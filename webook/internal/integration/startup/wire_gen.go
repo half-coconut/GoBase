@@ -4,7 +4,7 @@
 //go:build !wireinject
 // +build !wireinject
 
-package integration
+package startuo
 
 import (
 	"GoBase/webook/internal/repository"
@@ -26,11 +26,14 @@ func InitWebServer() *gin.Engine {
 	userCache := cache.NewUserCache(cmdable)
 	userRepository := repository.NewUserRepository(userDAO, userCache)
 	userService := service.NewUserService(userRepository)
-	codeCache := cache.NewCodeRedisCache(cmdable)
-	codeRepository := repository.NewCodeRepository(codeCache)
-	smsService := ioc.InitSMSService()
+	codeRedisCache := cache.NewCodeRedisCache(cmdable)
+	codeRepository := repository.NewCodeRepository(codeRedisCache)
+	smsService := ioc.InitSMSService(cmdable)
 	codeService := service.NewCodeService(codeRepository, smsService)
 	userHandler := web.NewUserHandler(userService, codeService)
-	engine := ioc.InitWebServer(v, userHandler)
+	articleService := service.NewArticleService()
+	loggerV1 := ioc.InitLogger()
+	articleHandler := web.NewArticleHandler(articleService, loggerV1)
+	engine := ioc.InitWebServer(v, userHandler, articleHandler)
 	return engine
 }
