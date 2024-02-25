@@ -1,12 +1,13 @@
 package integration
 
 import (
-	startup "GoBase/webook/internal/integration/startup"
 	"GoBase/webook/internal/web"
 	"GoBase/webook/ioc"
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/gin-gonic/gin"
+	_ "github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"time"
@@ -17,7 +18,8 @@ import (
 )
 
 func TestUserHandler_e2e_SendSMSLoginCode(t *testing.T) {
-	server := startup.InitWebServer()
+	//server := startup.InitUserSvc()
+	server := gin.Default()
 	rdb := ioc.InitRedis()
 	testCases := []struct {
 		name string

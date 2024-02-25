@@ -30,6 +30,7 @@ func (h *ArticleHandler) RegisterRoutes(server *gin.Engine) {
 
 func (h *ArticleHandler) Edit(ctx *gin.Context) {
 	type Req struct {
+		Id      int64  `json:"id"`
 		Title   string `json:"title"`
 		Content string `json:"content"`
 	}
@@ -39,9 +40,24 @@ func (h *ArticleHandler) Edit(ctx *gin.Context) {
 	}
 	// 检测输入，跳过
 	// 调用 svc 代码
+	cl := ctx.MustGet("claims")
+	claims, ok := cl.(*UserClaims)
+	if !ok {
+		//ctx.AbortWithStatus(http.StatusUnauthorized)
+		ctx.JSON(http.StatusOK, Result{
+			Code: 5,
+			Msg:  "系统错误",
+		})
+		h.l.Error("未发现用户的 session 信息")
+		return
+	}
 	id, err := h.svc.Save(ctx, domain.Article{
+		Id:      req.Id,
 		Title:   req.Title,
 		Content: req.Content,
+		Author: domain.Author{
+			Id: claims.Uid,
+		},
 	})
 	if err != nil {
 		ctx.JSON(http.StatusOK, Result{
@@ -56,5 +72,4 @@ func (h *ArticleHandler) Edit(ctx *gin.Context) {
 		Msg:  "OK",
 		Data: id,
 	})
-	println(id)
 }

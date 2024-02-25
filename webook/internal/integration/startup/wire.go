@@ -1,6 +1,6 @@
 //go:build wireinject
 
-package startuo
+package startup
 
 import (
 	"GoBase/webook/internal/repository"
@@ -18,12 +18,14 @@ func InitWebServer() *gin.Engine {
 		ioc.InitDB, ioc.InitRedis, ioc.InitLogger,
 
 		dao.NewUserDAO,
+		dao.NewGORMArticleDAO,
 
 		cache.NewUserCache,
 		cache.NewCodeRedisCache,
 
 		repository.NewUserRepository,
 		repository.NewCodeRepository,
+		repository.NewArticleRepository,
 
 		service.NewUserService,
 		service.NewCodeService,
@@ -37,4 +39,45 @@ func InitWebServer() *gin.Engine {
 		ioc.InitMiddlewares,
 	)
 	return new(gin.Engine)
+}
+
+var thirdProvider = wire.NewSet(
+	ioc.InitRedis,
+	ioc.InitLogger,
+	ioc.InitDB,
+)
+
+var userSvcProvider = wire.NewSet(
+	dao.NewUserDAO,
+	cache.NewUserCache,
+	cache.NewCodeRedisCache,
+
+	repository.NewUserRepository,
+	repository.NewCodeRepository,
+
+	service.NewUserService,
+	service.NewCodeService,
+
+	ioc.InitSMSService,
+	web.NewUserHandler,
+)
+
+func InitArticleHandler() *web.ArticleHandler {
+	wire.Build(
+		thirdProvider,
+		dao.NewGORMArticleDAO,
+		repository.NewArticleRepository,
+		service.NewArticleService,
+		web.NewArticleHandler)
+	return &web.ArticleHandler{}
+}
+
+func InitUserSvc() service.UserService {
+	wire.Build(thirdProvider, userSvcProvider)
+	return service.NewUserService(nil)
+}
+
+func InitTestDB() service.UserService {
+	wire.Build(ioc.InitDB)
+	return service.NewUserService(nil)
 }

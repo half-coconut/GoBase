@@ -4,7 +4,7 @@
 //go:build !wireinject
 // +build !wireinject
 
-package startuo
+package startup
 
 import (
 	"GoBase/webook/internal/repository"
@@ -14,6 +14,7 @@ import (
 	"GoBase/webook/internal/web"
 	"GoBase/webook/ioc"
 	"github.com/gin-gonic/gin"
+	"github.com/google/wire"
 )
 
 // Injectors from wire.go:
@@ -31,9 +32,37 @@ func InitWebServer() *gin.Engine {
 	smsService := ioc.InitSMSService(cmdable)
 	codeService := service.NewCodeService(codeRepository, smsService)
 	userHandler := web.NewUserHandler(userService, codeService)
-	articleService := service.NewArticleService()
+	articleDAO := dao.NewGORMArticleDAO(db)
+	articleRepository := repository.NewArticleRepository(articleDAO)
+	articleService := service.NewArticleService(articleRepository)
 	loggerV1 := ioc.InitLogger()
 	articleHandler := web.NewArticleHandler(articleService, loggerV1)
 	engine := ioc.InitWebServer(v, userHandler, articleHandler)
 	return engine
 }
+
+func InitArticleHandler() *web.ArticleHandler {
+	db := ioc.InitDB()
+	articleDAO := dao.NewGORMArticleDAO(db)
+	articleRepository := repository.NewArticleRepository(articleDAO)
+	articleService := service.NewArticleService(articleRepository)
+	loggerV1 := ioc.InitLogger()
+	articleHandler := web.NewArticleHandler(articleService, loggerV1)
+	return articleHandler
+}
+
+func InitUserSvc() service.UserService {
+	db := ioc.InitDB()
+	userDAO := dao.NewUserDAO(db)
+	cmdable := ioc.InitRedis()
+	userCache := cache.NewUserCache(cmdable)
+	userRepository := repository.NewUserRepository(userDAO, userCache)
+	userService := service.NewUserService(userRepository)
+	return userService
+}
+
+// wire.go:
+
+var thirdProvider = wire.NewSet(ioc.InitRedis, ioc.InitLogger, ioc.InitDB)
+
+var userSvcProvider = wire.NewSet(dao.NewUserDAO, cache.NewUserCache, cache.NewCodeRedisCache, repository.NewUserRepository, repository.NewCodeRepository, service.NewUserService, service.NewCodeService, ioc.InitSMSService, web.NewUserHandler)
