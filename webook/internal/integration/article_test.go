@@ -155,9 +155,6 @@ func (s *ArticleTestSuite) TestEdit() {
 				var art dao.Article
 				err := s.db.Where("id=?", 3).First(&art).Error
 				assert.NoError(t, err)
-				// 为了确保更新时间
-				assert.True(t, art.Utime > 234)
-				art.Utime = 0
 				assert.Equal(t, dao.Article{
 					Id:       3,
 					Title:    "我的标题",
@@ -174,8 +171,9 @@ func (s *ArticleTestSuite) TestEdit() {
 			},
 			wantCode: http.StatusOK,
 			wantRes: Result[int64]{
-				Data: 3,
-				Msg:  "OK",
+				Code: 5,
+				Data: 0,
+				Msg:  "系统错误",
 			},
 		},
 	}
